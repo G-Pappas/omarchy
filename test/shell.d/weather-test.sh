@@ -153,6 +153,29 @@ assertEqual(
   weather.iconForCode(389, false),
   'weather picks hourly forecast icon nearest noon'
 )
+const hourlyReport = {
+  current: { time: '2026-10-12T15:00' },
+  hourly: {
+    time: ['2026-10-12T14:00', '2026-10-12T15:00', '2026-10-12T16:00', '2026-10-12T17:00', '2026-10-12T18:00', '2026-10-12T19:00', '2026-10-12T20:00'],
+    temperature_2m: [23.4, 24.1, 23.6, 22.9, 22.2, 21.5, 20.1],
+    weather_code: [0, 0, 2, 3, 61, 63, 0],
+    precipitation_probability: [0, 0, 10, 20, 60, 80, 0],
+    is_day: [1, 1, 1, 1, 1, 0, 0]
+  }
+}
+assertDeepEqual(
+  weather.openMeteoHourlySlots(hourlyReport, 2, 3),
+  [
+    { time: '16:00', tempC: '24', tempF: '74', rain: '10', openMeteoWeatherCode: 2, isDay: 1 },
+    { time: '19:00', tempC: '22', tempF: '71', rain: '80', openMeteoWeatherCode: 63, isDay: 0 }
+  ],
+  'weather hourly slots start after the current hour and step through the series'
+)
+assertEqual(weather.openMeteoHourlySlots(hourlyReport, 10, 3).length, 2, 'weather hourly slots stop at the end of the series')
+assertDeepEqual(weather.openMeteoHourlySlots({ current: {} }, 8, 3), [], 'weather hourly slots handle a report without hourly data')
+assertDeepEqual(weather.openMeteoHourlySlots(null, 8, 3), [], 'weather hourly slots handle a missing report')
+assertEqual(weather.hourIcon({ openMeteoWeatherCode: 0, isDay: 0 }), weather.iconForCode(113, true), 'weather hourly icon uses the night variant after dark')
+assert(panelSource.includes('&hourly=temperature_2m,weather_code,precipitation_probability,is_day'), 'weather requests hourly data from open-meteo')
 JS
 
 test_tmp=$(mktemp -d)

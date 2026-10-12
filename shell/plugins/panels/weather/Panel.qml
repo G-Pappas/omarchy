@@ -136,6 +136,7 @@ Panel {
   readonly property var current: (hasConfiguredCoordinates && openMeteoCurrent) ? openMeteoCurrent : ((report && report.current_condition && report.current_condition[0]) ? report.current_condition[0] : openMeteoCurrent)
   readonly property var areaInfo: report && report.nearest_area && report.nearest_area[0] ? report.nearest_area[0] : null
   readonly property var forecastDays: buildForecastDays()
+  readonly property var hourlySlots: Model.openMeteoHourlySlots(dailyForecastReport, 8, 3)
   readonly property string reportCountry: areaInfo && areaInfo.country && areaInfo.country[0] ? areaInfo.country[0].value : ""
 
   readonly property bool useImperial: Model.shouldUseImperial(setting("unit", ""), Qt.locale().name, reportCountry)
@@ -181,6 +182,7 @@ Panel {
       + "?latitude=" + encodeURIComponent(String(lat))
       + "&longitude=" + encodeURIComponent(String(lon))
       + "&daily=weather_code,temperature_2m_max,temperature_2m_min"
+      + "&hourly=temperature_2m,weather_code,precipitation_probability,is_day"
       + "&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,is_day"
       + "&forecast_days=4"
       + "&timezone=auto"
@@ -798,6 +800,70 @@ Panel {
         font.family: root.bar.fontFamily
         font.pixelSize: Style.font.bodySmall
         font.italic: true
+      }
+
+      // ---- Hourly strip: next 24h in 3-hour steps (time, icon, temp, rain chance).
+      Rectangle {
+        visible: root.hourlySlots.length > 0
+        width: parent.width
+        height: Style.spacing.hairline
+        color: root.bar.foreground
+        opacity: 0.12
+      }
+
+      Item {
+        visible: root.hourlySlots.length > 0
+        width: parent.width
+        height: hourlyRow.height
+
+        Row {
+          id: hourlyRow
+          anchors.horizontalCenter: parent.horizontalCenter
+          spacing: Style.space(14)
+
+          Repeater {
+            model: root.hourlySlots
+
+            Column {
+              required property var modelData
+              width: Style.space(40)
+              spacing: Style.space(4)
+
+              Text {
+                textFormat: Text.PlainText
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: modelData.time
+                color: Qt.darker(root.bar.foreground, 1.4)
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.caption
+              }
+              Text {
+                textFormat: Text.PlainText
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: Model.hourIcon(modelData)
+                color: root.bar.foreground
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.title
+              }
+              Text {
+                textFormat: Text.PlainText
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: (root.useImperial ? modelData.tempF : modelData.tempC) + "°"
+                color: root.bar.foreground
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.body
+              }
+              Text {
+                textFormat: Text.PlainText
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: modelData.rain !== "" && modelData.rain !== "0" ? modelData.rain + "%" : " "
+                color: Qt.darker(root.bar.foreground, 1.5)
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.caption
+              }
+            }
+          }
+        }
       }
 
       // ---- Divider between current conditions and forecast.

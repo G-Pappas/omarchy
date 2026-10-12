@@ -173,6 +173,39 @@ function openMeteoCurrentCondition(dailyForecastReport) {
   }
 }
 
+// Open-Meteo hourly series (requested with timezone=auto, so times are local
+// to the forecast location) → the next `count` slots, `step` hours apart,
+// starting from the first hour after current.time.
+function openMeteoHourlySlots(dailyForecastReport, count, step) {
+  var hourly = dailyForecastReport && dailyForecastReport.hourly ? dailyForecastReport.hourly : null
+  if (!hourly || !hourly.time) return []
+
+  var current = dailyForecastReport.current
+  var now = current && current.time ? String(current.time).slice(0, 13) : ""
+  var start = 0
+  while (start < hourly.time.length && String(hourly.time[start]).slice(0, 13) <= now) ++start
+
+  var result = []
+  for (var i = start; i < hourly.time.length && result.length < count; i += step) {
+    var c = hourly.temperature_2m ? hourly.temperature_2m[i] : ""
+    var rain = hourly.precipitation_probability ? hourly.precipitation_probability[i] : null
+    result.push({
+      time: String(hourly.time[i]).slice(11, 16),
+      tempC: roundedTemp(c),
+      tempF: roundedTemp(celsiusToFahrenheit(c)),
+      rain: rain === null || rain === undefined ? "" : String(Math.round(rain)),
+      openMeteoWeatherCode: hourly.weather_code ? hourly.weather_code[i] : null,
+      isDay: hourly.is_day ? hourly.is_day[i] : 1
+    })
+  }
+  return result
+}
+
+function hourIcon(slot) {
+  if (!slot) return ""
+  return iconForOpenMeteoCode(slot.openMeteoWeatherCode, Number(slot.isDay) === 0)
+}
+
 function currentIcon(current, fallback) {
   if (!current) return fallback || ""
   if (current.openMeteoWeatherCode !== undefined && current.openMeteoWeatherCode !== null)
@@ -282,6 +315,8 @@ if (typeof module !== "undefined") {
     dayName: dayName,
     openMeteoForecastDays: openMeteoForecastDays,
     openMeteoCurrentCondition: openMeteoCurrentCondition,
+    openMeteoHourlySlots: openMeteoHourlySlots,
+    hourIcon: hourIcon,
     currentIcon: currentIcon,
     provisionalCurrentIcon: provisionalCurrentIcon,
     weatherResponseCompletesSave: weatherResponseCompletesSave,
